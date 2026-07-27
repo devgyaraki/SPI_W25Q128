@@ -32,15 +32,19 @@ W25Q128 :: W25Q128 (SPI_HandleTypeDef* spi, GPIO_TypeDef* port, uint16_t pin) {
 }
 
 void cs_h (void){
-
+	HAL_GPIO_WritePin(cs_port,cs_pin,GPIO_PIN_SET);
 }
 
 void cs_l (void){
-
+	HAL_GPIO_WritePin(cs_port,cs_pin,GPIO_PIN_RESET);
 }
 
 void W25Q128 :: write_enable () {
+	uint8_t cmd = 0x06;
 
+	cs_l;
+	HAL_SPI_Transmit(hspi, &cmd, 1, 100);
+	cs_h;
 }
 
 void W25Q128 :: write () {
