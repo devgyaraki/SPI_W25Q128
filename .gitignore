@@ -1,0 +1,28 @@
+# --- STM32 / Eclipse / CubeIDE specifikus ---
+Debug/
+Release/
+build/
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+
+# Eclipse projektfájlok (ha tiszta forráskódot akarsz, de a .cproject/.project-et sokan benne hagyják, hogy egyből nyitható legyen)
+.metadata/
+.settings/
+.classpath
+.project
+.cproject
+
+# Ideiglenes fájlok
+*.o
+*.d
+*.su
+*.cyclo
+*.launch
+
+# Operációs rendszer fájlok
+.DS_Store
+Thumbs.db
+Desktop.ini
