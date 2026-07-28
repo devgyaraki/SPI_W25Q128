@@ -48,24 +48,34 @@ void W25Q128 :: waitBusy (uint8_t* pData) {
 
 //Page program
 void W25Q128 :: write (uint32_t addr, uint8_t* buf,uint16_t len) {
-	write_enable ();
+	while (len > 0) {
+		uint16_t page_offset = addr % 256;
+		uint16_t space_left  = 256 - page_offset;
 
-	uint8_t Status = 0;
+		uint16_t chunk = (space_left < len) ? space_left : len;
 
-	uint8_t cmd [4];
-	cmd [0] = W25_CMD_PROGRAM;
-	cmd [1] = (addr >> 16) & 0xFF;
-	cmd [2] = (addr >> 8) & 0xFF;
-	cmd [3] = addr & 0xFF;
+		write_enable ();
 
-	cs_l ();
-	HAL_SPI_Transmit(hspi, cmd, 4, 100);
-	HAL_SPI_Transmit(hspi, buf, len, 100);
-	cs_h ();
+		uint8_t cmd [4];
+		cmd [0] = W25_CMD_PROGRAM;
+		cmd [1] = (addr >> 16) & 0xFF;
+		cmd [2] = (addr >> 8) & 0xFF;
+		cmd [3] = addr & 0xFF;
 
-	do {
-		waitBusy(&Status);
-	}while ((Status & 0x01) == 1);
+		cs_l ();
+		HAL_SPI_Transmit(hspi, cmd, 4, 100);
+		HAL_SPI_Transmit(hspi, buf, chunk, 100);
+		cs_h ();
+
+		uint8_t Status = 0;
+		do {
+			waitBusy(&Status);
+		}while ((Status & 0x01) == 1);
+
+		addr += chunk;
+		buf  += chunk;
+		len  -= chunk;
+	}
 }
 
 void W25Q128::read(uint32_t addr, uint8_t* pData, uint16_t size) {
