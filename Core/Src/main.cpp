@@ -18,6 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "W25Q128_helper.h"
+#include "stdio.h"
+#include "cstring"
+#include "string.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -94,7 +98,48 @@ int main(void)
   MX_SPI1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  W25Q128 flash(&hspi1, GPIOA, GPIO_PIN_8);
+    uint8_t Chip_ID[3];
 
+    flash.JEDEC_ID(Chip_ID);
+    uint8_t Chip_s = 0;
+    if (Chip_ID[0] == 0xEF && Chip_ID[1] == 0x40 && Chip_ID[2] == 0x18)
+    	{
+    	char msg[] = "Chip recognized: W25Q128\r\n";
+    	HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 200);
+    	Chip_s = 1;
+    	}
+    else
+    	{
+    	 char msg[40];
+    	 sprintf(msg, "Unknown chip: %02X %02X %02X\r\n", Chip_ID[0], Chip_ID[1], Chip_ID[2]);
+    	 HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 200);
+    	 };
+
+    if(Chip_s == 1){
+    	flash.Chip_erase();
+    }
+    else{
+    	while (1){
+
+    	}
+    }
+
+    const char* text_to_write = "Hello Flash!";
+    // Átkonvertáljuk (castoljuk) uint8_t* mutatóvá:
+    flash.append((uint8_t*)text_to_write, strlen(text_to_write));
+    HAL_Delay(20);
+    uint8_t read_buffer[20];
+    // Kiolvassuk a bájtokat
+    flash.read(0x000000, read_buffer, 12);
+
+    // Biztonságos lezárás stringként:
+    char string_buffer[13];
+    memcpy(string_buffer, read_buffer, 12);
+    string_buffer[12] = '\0'; // String lezáró karakter
+
+    // Most már kiírhatod UART-on szövegként is:
+    HAL_UART_Transmit(&huart2, (uint8_t*)string_buffer, strlen(string_buffer), 200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -257,7 +302,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = SPI_ChipS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(SPI_ChipS_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */

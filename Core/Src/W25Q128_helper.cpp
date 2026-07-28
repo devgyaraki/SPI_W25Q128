@@ -40,14 +40,12 @@ void W25Q128 :: write_enable (void) {
 void W25Q128 :: waitBusy (uint8_t* pData) {
 	uint8_t cmd = W25_CMD_READ_STATUS;
 
-	uint8_t status;
-
 	do {
 	cs_l ();
 	HAL_SPI_Transmit(hspi, &cmd, 1, 100);
 	HAL_SPI_Receive(hspi, pData, 1, 100);
 	cs_h ();
-	}while (status & 1);
+	}while (*pData & 0x01);
 }
 
 
@@ -166,12 +164,16 @@ uint32_t W25Q128::append(uint8_t* buf, uint16_t len) {
 
 //Reas JEDEC ID
 void W25Q128 :: JEDEC_ID (uint8_t* pData) {
+	uint8_t tx_data[4] = {W25_CMD_JEDEC, 0xFF, 0xFF, 0xFF};
+	    uint8_t rx_data[4] = {0};
+	    cs_l(); // 1. Egyszer lehúzzuk az elején
 
-	uint8_t cmd;
-	cmd = W25_CMD_JEDEC;
+	    // 2. Egyszerre, egyetlen megszakíthatatlan csomagban küldünk és fogadunk 4 bájtot
+	    HAL_SPI_TransmitReceive(hspi, tx_data, rx_data, 4, 10);
 
-	cs_l ();
-	HAL_SPI_Transmit(hspi, &cmd, 1, 100);
-	HAL_SPI_Receive(hspi, pData, 3, 100);
-	cs_h ();
+	    cs_h(); // 3. Egyszer húzzuk fel a végén
+
+	    pData[0] = rx_data[1];
+	    pData[1] = rx_data[2];
+	    pData[2] = rx_data[3];
 }
