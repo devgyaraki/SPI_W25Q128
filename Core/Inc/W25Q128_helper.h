@@ -17,6 +17,8 @@
 #define W25_CMD_CHIP_ERASE   0xC7
 #define W25_CMD_JEDEC        0x9F
 
+#define PAGE_SIZE 256
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +35,7 @@ private:
     SPI_HandleTypeDef* hspi;
     GPIO_TypeDef* cs_port;
     uint16_t cs_pin;
+    uint32_t next_free_addr;
 
 public:
     W25Q128(SPI_HandleTypeDef* spi, GPIO_TypeDef* port, uint16_t pin);
@@ -45,6 +48,7 @@ public:
     void Sector_erase(uint32_t addr);
     void Block_erase(uint32_t addr);
     void Chip_erase(void);
+    uint32_t append(uint8_t* buf, uint16_t len);
     void JEDEC_ID(uint8_t* pData);
 };
 #endif

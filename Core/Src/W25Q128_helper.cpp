@@ -13,6 +13,7 @@ W25Q128 :: W25Q128 (SPI_HandleTypeDef* spi, GPIO_TypeDef* port, uint16_t pin) {
 	hspi = spi;
 	cs_port = port;
 	cs_pin = pin;
+	next_free_addr = 0;
 }
 
 //Chip select driving high
@@ -39,18 +40,22 @@ void W25Q128 :: write_enable (void) {
 void W25Q128 :: waitBusy (uint8_t* pData) {
 	uint8_t cmd = W25_CMD_READ_STATUS;
 
+	uint8_t status;
+
+	do {
 	cs_l ();
 	HAL_SPI_Transmit(hspi, &cmd, 1, 100);
 	HAL_SPI_Receive(hspi, pData, 1, 100);
 	cs_h ();
+	}while (status & 1);
 }
 
 
 //Page program
 void W25Q128 :: write (uint32_t addr, uint8_t* buf,uint16_t len) {
 	while (len > 0) {
-		uint16_t page_offset = addr % 256;
-		uint16_t space_left  = 256 - page_offset;
+		uint16_t page_offset = addr % PAGE_SIZE;
+		uint16_t space_left  = PAGE_SIZE - page_offset;
 
 		uint16_t chunk = (space_left < len) ? space_left : len;
 
@@ -151,6 +156,13 @@ void W25Q128 :: Chip_erase (void) {
 	}while ((Status & 0x01) == 1);
 }
 
+//User friendly page program
+uint32_t W25Q128::append(uint8_t* buf, uint16_t len) {
+    uint32_t written_at = next_free_addr;
+    write(written_at, buf, len);
+    next_free_addr += len;
+    return written_at;
+}
 
 //Reas JEDEC ID
 void W25Q128 :: JEDEC_ID (uint8_t* pData) {
