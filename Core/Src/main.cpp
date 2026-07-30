@@ -18,6 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "W25Q128_helper.h"
+#include "stdio.h"
+#include "cstring"
+#include "string.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -42,6 +46,8 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -50,6 +56,7 @@ SPI_HandleTypeDef hspi1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -89,8 +96,50 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  W25Q128 flash(&hspi1, GPIOA, GPIO_PIN_8);
+    uint8_t Chip_ID[3];
 
+    flash.JEDEC_ID(Chip_ID);
+    uint8_t Chip_s = 0;
+    if (Chip_ID[0] == 0xEF && Chip_ID[1] == 0x40 && Chip_ID[2] == 0x18)
+    	{
+    	char msg[] = "Chip recognized: W25Q128\r\n";
+    	HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 200);
+    	Chip_s = 1;
+    	}
+    else
+    	{
+    	 char msg[40];
+    	 sprintf(msg, "Unknown chip: %02X %02X %02X\r\n", Chip_ID[0], Chip_ID[1], Chip_ID[2]);
+    	 HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 200);
+    	 };
+
+    if(Chip_s == 1){
+    	flash.Chip_erase();
+    }
+    else{
+    	while (1){
+
+    	}
+    }
+
+    const char* text_to_write = "Hello Flash!";
+    // Átkonvertáljuk (castoljuk) uint8_t* mutatóvá:
+    flash.append((uint8_t*)text_to_write, strlen(text_to_write));
+    HAL_Delay(20);
+    uint8_t read_buffer[20];
+    // Kiolvassuk a bájtokat
+    flash.read(0x000000, read_buffer, 12);
+
+    // Biztonságos lezárás stringként:
+    char string_buffer[13];
+    memcpy(string_buffer, read_buffer, 12);
+    string_buffer[12] = '\0'; // String lezáró karakter
+
+    // Most már kiírhatod UART-on szövegként is:
+    HAL_UART_Transmit(&huart2, (uint8_t*)string_buffer, strlen(string_buffer), 200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -190,6 +239,39 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -216,19 +298,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
-  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : SPI_ChipS_Pin */
   GPIO_InitStruct.Pin = SPI_ChipS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(SPI_ChipS_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
